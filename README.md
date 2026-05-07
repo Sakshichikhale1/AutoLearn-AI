@@ -6,6 +6,9 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0+-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![Groq](https://img.shields.io/badge/AI_Engine-Groq_Llama_3.3-orange?style=flat)](https://groq.com)
 
+<br/>
+
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Open_App-4CAF50?style=for-the-badge)](https://autolearnai-frontend.onrender.com)
 ---
 
 ## 📖 Project Overview
