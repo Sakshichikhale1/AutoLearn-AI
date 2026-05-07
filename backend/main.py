@@ -28,16 +28,24 @@ load_dotenv()
 # CREATE APP FIRST
 app = FastAPI()
 
+# Build CORS origins: always allow localhost for dev, plus any production frontend URL
+_allowed_origins = [
+    "http://localhost:8080",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+# Add production frontend URL from environment (set automatically by Render)
+_frontend_url = os.getenv("FRONTEND_URL", "")
+if _frontend_url:
+    _allowed_origins.append(f"https://{_frontend_url}")
+    _allowed_origins.append(f"http://{_frontend_url}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080", 
-        "http://localhost:5173", 
-        "http://localhost:3000",
-        "http://127.0.0.1:8080",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000"
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

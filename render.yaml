@@ -17,13 +17,27 @@ services:
         sync: false
       - key: YOUTUBE_API_KEY
         sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false
+      - key: HUGGINGFACE_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          name: autolearn-ai-frontend
+          type: web
+          property: host
 
   # --- Frontend Static Site ---
   - type: web
     name: autolearn-ai-frontend
     runtime: static
     repo: https://github.com/Sakshichikhale1/AutoLearn-AI
-    # Static sites are always free on Render, so the plan field is removed
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     envVars:
@@ -31,7 +45,7 @@ services:
         fromService:
           name: autolearn-ai-backend
           type: web
-          property: host
+          property: hostport
     routes:
       - type: rewrite
         source: /*
