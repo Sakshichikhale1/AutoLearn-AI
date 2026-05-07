@@ -22,29 +22,36 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import jwt
 import bcrypt
 
-# ✅ LOAD ENV FIRST
+# LOAD ENV FIRST
 load_dotenv()
 
-# ✅ CREATE APP FIRST
+# CREATE APP FIRST
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "http://localhost:8080", 
+        "http://localhost:5173", 
+        "http://localhost:3000",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ OPTIONAL ROOT (prevents 404 confusion)
+# OPTIONAL ROOT (prevents 404 confusion)
 @app.get("/")
 def root():
-    return {"message": "AutoLearn AI Backend Running 🚀"}
+    return {"message": "AutoLearn AI Backend Running"}
 
-# ✅ NOW import routers (refreshed)
+# NOW import routers (refreshed)
 from routers import exam, video, voice, share, mindmap, research
 
-# ✅ INCLUDE ROUTERS AFTER app is created
+# INCLUDE ROUTERS AFTER app is created
 app.include_router(exam.router)
 app.include_router(video.router)
 app.include_router(voice.router)
