@@ -1,0 +1,39 @@
+services:
+  # --- Backend Web Service ---
+  - type: web
+    name: autolearn-ai-backend
+    env: docker
+    repo: https://github.com/Sakshichikhale1/AutoLearn-AI
+    plan: free
+    region: ohio
+    dockerContext: .
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MONGODB_URL
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+
+  # --- Frontend Static Site ---
+  - type: web
+    name: autolearn-ai-frontend
+    runtime: static
+    repo: https://github.com/Sakshichikhale1/AutoLearn-AI
+    plan: free
+    # Static sites are global and do not have a region
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: autolearn-ai-backend
+          type: web
+          property: host
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
