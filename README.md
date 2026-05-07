@@ -143,17 +143,26 @@ npm install
 
 ## 🔑 Environment Variables
 
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file inside the `backend/` directory:
 
 ```env
+# ---------------- AI Core ----------------
 GROQ_API_KEY=your_groq_api_key
-MONGODB_URL=your_mongodb_connection_string
-YOUTUBE_API_KEY=your_youtube_api_key
-JWT_SECRET=your_secure_jwt_secret
+GEMINI_API_KEY=your_gemini_api_key
 
-# Optional Integrations
-PEXELS_API_KEY=your_pexels_key
-HUGGINGFACE_API_KEY=your_hf_key
+# ---------------- Voice AI ----------------
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
+
+# ---------------- Media & Research ----------------
+YOUTUBE_API_KEY=your_youtube_api_key
+PEXELS_API_KEY=your_pexels_api_key
+HUGGINGFACE_API_KEY=your_huggingface_api_key
+
+# ---------------- Database ----------------
+MONGODB_URL=your_mongodb_connection_string
+
+# ---------------- Security ----------------
+JWT_SECRET=your_secure_jwt_secret
 ```
 
 ---
