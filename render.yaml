@@ -23,8 +23,7 @@ services:
     name: autolearn-ai-frontend
     runtime: static
     repo: https://github.com/Sakshichikhale1/AutoLearn-AI
-    plan: free
-    # Static sites are global and do not have a region
+    # Static sites are always free on Render, so the plan field is removed
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     envVars:
