@@ -28,20 +28,23 @@ load_dotenv()
 # CREATE APP FIRST
 app = FastAPI()
 
-# Build CORS origins: always allow localhost for dev, plus any production frontend URL
+# CORS: Allow both local development and production Render domains
 _allowed_origins = [
+    # Local development
     "http://localhost:8080",
     "http://localhost:5173",
     "http://localhost:3000",
     "http://127.0.0.1:8080",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
+    # Production Render frontend
+    "https://autolearnai-frontend.onrender.com",
+    "http://autolearnai-frontend.onrender.com",
 ]
-# Add production frontend URL from environment (set automatically by Render)
-_frontend_url = os.getenv("FRONTEND_URL", "")
-if _frontend_url:
-    _allowed_origins.append(f"https://{_frontend_url}")
-    _allowed_origins.append(f"http://{_frontend_url}")
+# Also allow any extra frontend URL set via environment variable
+_extra_frontend = os.getenv("FRONTEND_URL", "")
+if _extra_frontend:
+    _allowed_origins.append(f"https://{_extra_frontend}")
 
 app.add_middleware(
     CORSMiddleware,
