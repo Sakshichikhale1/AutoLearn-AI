@@ -16,3 +16,4 @@ youtube-transcript-api
 Pillow
 cryptography
 httpx
+yt-dlp

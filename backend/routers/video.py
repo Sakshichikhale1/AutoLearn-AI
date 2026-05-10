@@ -7,6 +7,9 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from groq import Groq 
 from youtube_transcript_api import YouTubeTranscriptApi
+import tempfile
+import yt_dlp
+import shutil
 
 load_dotenv()
 
@@ -36,24 +39,66 @@ def extract_video_id(url: str) -> str | None:
             return m.group(1)
     return None
 
+def get_transcript_fallback(video_id: str) -> str:
+    client = get_groq_client()
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    
+    temp_dir = tempfile.mkdtemp()
+    audio_path = os.path.join(temp_dir, "audio.m4a")
+    
+    ydl_opts = {
+        'format': 'm4a/bestaudio/best',
+        'outtmpl': audio_path,
+        'noplaylist': True,
+        'quiet': True,
+    }
+    
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+            
+        files = os.listdir(temp_dir)
+        if not files:
+            raise Exception("No audio file was downloaded.")
+            
+        actual_audio_path = os.path.join(temp_dir, files[0])
+        
+        # Whisper max size is 25MB
+        if os.path.getsize(actual_audio_path) > 25 * 1024 * 1024:
+            raise Exception("Audio file is too large for AI transcription (>25MB). Please choose a shorter video.")
+            
+        with open(actual_audio_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                file=(files[0], audio_file.read()),
+                model="whisper-large-v3",
+                response_format="text",
+            )
+        return transcript
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
 def get_transcript_sync(video_id: str) -> str:
     """Synchronous core for transcript fetching"""
     api = YouTubeTranscriptApi()
-    transcript_list = api.list(video_id)
     try:
-        # 1. Try native English
-        transcript = transcript_list.find_transcript(["en", "en-US", "en-GB"])
-    except Exception:
+        transcript_list = api.list(video_id)
         try:
-            # 2. Try to translate to English if possible
-            first_transcript = list(transcript_list)[0]
-            transcript = first_transcript.translate('en')
+            # 1. Try native English
+            transcript = transcript_list.find_transcript(["en", "en-US", "en-GB"])
         except Exception:
-            # 3. Fallback: Use the original language
-            transcript = list(transcript_list)[0]
-    
-    chunks = transcript.fetch()
-    return " ".join(chunk.text for chunk in chunks)
+            try:
+                # 2. Try to translate to English if possible
+                first_transcript = list(transcript_list)[0]
+                transcript = first_transcript.translate('en')
+            except Exception:
+                # 3. Fallback: Use the original language
+                transcript = list(transcript_list)[0]
+        
+        chunks = transcript.fetch()
+        return " ".join(chunk.text for chunk in chunks)
+    except Exception as api_err:
+        print(f"Transcript API failed ({api_err}). Falling back to AI audio transcription...")
+        return get_transcript_fallback(video_id)
 
 @router.post("/summarize")
 async def summarize_video(req: SummarizeRequest):
