@@ -28,8 +28,12 @@ async def create_share(req: ShareCreateRequest, request: Request):
     
     await db.shared_sessions.insert_one(shared_session)
     
-    # Generate the base URL for the frontend (adjust if needed)
-    base_url = "http://localhost:8080" # Standard dev port
+    # Generate the base URL for the frontend
+    origin = request.headers.get("origin")
+    base_url = origin if origin else os.getenv("FRONTEND_URL", "http://localhost:8080")
+    if base_url and not base_url.startswith("http"):
+        base_url = f"https://{base_url}"
+    
     return {
         "share_id": share_id,
         "share_url": f"{base_url}/shared/{share_id}"

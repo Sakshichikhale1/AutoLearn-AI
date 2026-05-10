@@ -44,7 +44,10 @@ _allowed_origins = [
 # Also allow any extra frontend URL set via environment variable
 _extra_frontend = os.getenv("FRONTEND_URL", "")
 if _extra_frontend:
-    _allowed_origins.append(f"https://{_extra_frontend}")
+    if not _extra_frontend.startswith("http"):
+        _allowed_origins.append(f"https://{_extra_frontend}")
+    else:
+        _allowed_origins.append(_extra_frontend)
 
 app.add_middleware(
     CORSMiddleware,
