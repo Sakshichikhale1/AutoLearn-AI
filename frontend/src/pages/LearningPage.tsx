@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { BookOpen, Brain, Layers, MessageSquare, Video, Globe, Link as LinkIcon, Compass, Sparkles, Share2 } from "lucide-react";
+import { BookOpen, Brain, Layers, MessageSquare, Video, Globe, Link as LinkIcon, Compass, Sparkles, Share2, ArrowRight } from "lucide-react";
 import ShareModal from "@/components/learning/ShareModal";
 import NotesTab from "@/components/learning/NotesTab";
 import QuizTab from "@/components/learning/QuizTab";
@@ -20,7 +20,7 @@ const tabs = [
   { id: "glossary", label: "Glossary", icon: BookOpen, emoji: "📚" },
   { id: "flashcards", label: "Flashcards", icon: Layers, emoji: "🎴" },
   { id: "mindmap", label: "Mind Map", icon: Network, emoji: "🕸️" },
-  { id: "multimedia", label: "Multimedia", icon: Compass, emoji: "🎨" },
+  { id: "multimedia", label: "Tutorials & Research", icon: Compass, emoji: "🎨" },
   { id: "solve", label: "Scan & Solve", icon: Zap, emoji: "⚡" },
   { id: "chat", label: "Chat", icon: MessageSquare, emoji: "💬" },
 ];
@@ -124,7 +124,27 @@ export default function LearningPage() {
 
       {/* Tab Content */}
       <div className="animate-fade-in transition-all duration-500" key={activeTab}>
-        {activeTab === "notes" && <NotesTab notes={studyData?.notes || []} />}
+        {activeTab === "notes" && (
+          <div className="space-y-6">
+            <NotesTab notes={studyData?.notes || []} />
+            {currentSession.data.videos?.length > 0 && (
+              <div className="p-6 rounded-3xl bg-primary/5 border border-primary/10 flex items-center justify-between animate-slide-up mt-8">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Video className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-foreground">Video Tutorials Available</h4>
+                    <p className="text-sm text-muted-foreground">We found {currentSession.data.videos.length} expert tutorials for this topic.</p>
+                  </div>
+                </div>
+                <Button onClick={() => setActiveTab("multimedia")} variant="outline" className="rounded-xl border-primary/20 hover:bg-primary hover:text-white">
+                  Watch Now <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
         {activeTab === "quiz" && <QuizTab quiz={studyData?.quiz || []} />}
         {activeTab === "glossary" && <GlossaryTab vocabulary={currentSession.data.vocabulary || []} />}
         {activeTab === "flashcards" && <FlashcardsTab flashcards={studyData?.flashcards || []} />}
@@ -169,32 +189,38 @@ export default function LearningPage() {
                 <h3 className="text-xl font-bold text-foreground">Guided Video Tutorials</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {currentSession.data.videos?.map((vid: any, idx: number) => (
-                  <div key={idx} className="glass-card overflow-hidden group hover:border-primary/50 transition-all shadow-lg pb-4 relative">
-                     <div className="relative aspect-video">
-                        <img src={vid.thumbnail} className="object-cover w-full h-full" alt="thumb" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <a href={`https://youtube.com/watch?v=${vid.id}`} target="_blank" rel="noreferrer" className="h-12 w-12 rounded-full bg-primary/90 flex items-center justify-center text-white hover:scale-110 transition-transform">
-                              <Video className="h-6 w-6" />
-                           </a>
-                        </div>
-                     </div>
-                     <div className="p-4 space-y-3">
-                        <h4 className="font-bold text-sm text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors h-10">
-                           {vid.title}
-                        </h4>
-                        <Button 
-                          onClick={() => setSummaryVideo({ id: vid.id, title: vid.title })}
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full rounded-xl border-primary/20 hover:bg-primary hover:text-white transition-all gap-2"
-                        >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Summarize
-                        </Button>
-                     </div>
+                {currentSession.data.videos?.length > 0 ? (
+                  currentSession.data.videos.map((vid: any, idx: number) => (
+                    <div key={idx} className="glass-card overflow-hidden group hover:border-primary/50 transition-all shadow-lg pb-4 relative">
+                       <div className="relative aspect-video">
+                          <img src={vid.thumbnail} className="object-cover w-full h-full" alt="thumb" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <a href={`https://youtube.com/watch?v=${vid.id}`} target="_blank" rel="noreferrer" className="h-12 w-12 rounded-full bg-primary/90 flex items-center justify-center text-white hover:scale-110 transition-transform">
+                                <Video className="h-6 w-6" />
+                             </a>
+                          </div>
+                       </div>
+                       <div className="p-4 space-y-3">
+                          <h4 className="font-bold text-sm text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors h-10">
+                             {vid.title}
+                          </h4>
+                          <Button 
+                            onClick={() => setSummaryVideo({ id: vid.id, title: vid.title })}
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full rounded-xl border-primary/20 hover:bg-primary hover:text-white transition-all gap-2"
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Summarize
+                          </Button>
+                       </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-12 text-center glass-card border-dashed">
+                    <p className="text-muted-foreground">No matching video tutorials found for this specific topic.</p>
                   </div>
-                ))}
+                )}
               </div>
             </section>
 

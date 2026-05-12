@@ -5,6 +5,7 @@ import requests
 import wikipedia
 import pypdf
 import json
+import re
 import xml.etree.ElementTree as ET
 import base64
 from datetime import datetime, timedelta, timezone
@@ -157,6 +158,18 @@ async def generate_learning_content(
         content = ""
         if text:
             content += text + "\n"
+            
+            # Detect YouTube links and extract transcripts
+            youtube_links = re.findall(r'(https?://(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})|https?://youtu\.be/([a-zA-Z0-9_-]{11}))', text)
+            for link_set in youtube_links:
+                video_id = link_set[1] or link_set[2]
+                try:
+                    print(f"DEBUG: Found YouTube link, extracting transcript for {video_id}")
+                    from routers.video import get_transcript_sync
+                    yt_transcript = await asyncio.to_thread(get_transcript_sync, video_id)
+                    content += f"\n[Transcript from YouTube Video {video_id}]:\n{yt_transcript}\n"
+                except Exception as e:
+                    print(f"YouTube transcript extraction failed for {video_id}: {e}")
         
         for file in files:
             file_content = await file.read()
@@ -270,7 +283,19 @@ async def generate_learning_content(
                 return request.execute()
 
             yt_resp = await asyncio.to_thread(call_youtube)
-            for item in yt_resp.get("items", []):
+            items = yt_resp.get("items", [])
+            
+            # If no results, try a broader search with just the first few words
+            if not items and len(main_concept.split()) > 3:
+                broad_concept = " ".join(main_concept.split()[:3])
+                print(f"YouTube: No results for '{main_concept}', trying broader search: '{broad_concept}'")
+                def call_youtube_broad():
+                    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+                    return youtube.search().list(q=broad_concept, part="snippet", maxResults=3, type="video").execute()
+                yt_resp = await asyncio.to_thread(call_youtube_broad)
+                items = yt_resp.get("items", [])
+
+            for item in items:
                 videos.append({
                     "id": item["id"]["videoId"],
                     "title": item["snippet"]["title"],
@@ -278,6 +303,7 @@ async def generate_learning_content(
                 })
         except Exception as e:
             print(f"YouTube error: {e}")
+            # Fallback: if API fails, we could potentially use a fallback or just leave it empty
 
         # 3. Search for research papers & Wikipedia
         wiki_summary = ""
