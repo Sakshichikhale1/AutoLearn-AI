@@ -58,7 +58,7 @@ export default function ScanAndSolve() {
       formData.append("message", `The user said: "${guess}". Evaluate their guess. If correct, provide the next logical step and ask a question to lead them to the next part. If incorrect, give a subtle hint without revealing the answer. Keep the interactive 'Scan & Solve' mode going.`);
       formData.append("context", history.map(h => `${h.role}: ${h.content}`).join("\n"));
 
-      const res = await fetch("http://localhost:8000/chat", {
+      const res = await fetch(`${API}/chat`, {
         method: "POST",
         body: formData,
       });

@@ -86,7 +86,7 @@ export default function ChatTab() {
         try {
           const formData = new FormData();
           formData.append("file", file);
-          const res = await fetch("http://localhost:8000/voice/transcribe", {
+          const res = await fetch(`${API}/voice/transcribe`, {
             method: "POST",
             body: formData,
           });

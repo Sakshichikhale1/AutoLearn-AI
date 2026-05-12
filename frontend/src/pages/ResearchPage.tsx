@@ -64,7 +64,7 @@ export default function ResearchPage() {
       const formData = new FormData();
       formData.append("message", `Provide an elite academic deep-dive of this research paper based on its abstract. Break it down into: 1. Core Contribution, 2. Methodology, 3. Key Findings, and 4. Why it matters. \n\nPaper Title: ${paper.title}\nAbstract: ${paper.abstract}`);
       
-      const response = await fetch("http://localhost:8000/chat", {
+      const response = await fetch(`${API}/chat`, {
         method: "POST",
         body: formData,
       });

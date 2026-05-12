@@ -109,7 +109,8 @@ async def summarize_video(req: SummarizeRequest):
     try:
         # Run blocking transcript fetch in a thread
         transcript_text = await asyncio.to_thread(get_transcript_sync, vid)
-        transcript = transcript_text[:8000]  # Reduced cap to stay within TPM limits
+        # Increased cap for better context (approx 7k tokens)
+        transcript = transcript_text[:30000] 
     except Exception as e:
         print(f"Transcript Error: {e}")
         raise HTTPException(400, f"AI Summary failed: No usable transcript found. {str(e)}")
@@ -141,7 +142,20 @@ Transcript:
 
     try:
         resp = await asyncio.to_thread(call_groq)
-        data = json.loads(resp.choices[0].message.content)
+        content = resp.choices[0].message.content
+        
+        # Robust JSON extraction
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            # Try to find JSON block in markdown if LLM misbehaved
+            import re
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            if match:
+                data = json.loads(match.group(0))
+            else:
+                raise Exception("Could not parse AI response as JSON")
+
         return {
             "video_id": vid,
             "summary": data.get("summary", ""),

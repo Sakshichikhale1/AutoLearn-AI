@@ -112,7 +112,7 @@ function MindMapFlow({ content, onImageCapture }: MindMapTabProps) {
     if (!selectedNode) return;
     setExpanding(true);
     try {
-      const res = await fetch("http://localhost:8000/mindmap/expand", {
+      const res = await fetch(`${API}/mindmap/expand`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ node_label: selectedNode.data.label, context: content }),
