@@ -27,7 +27,8 @@ class VideoService:
         # Stage 1: Official API
         logger.info(f"Stage 1: Attempting official YouTubeTranscriptApi for {video_id}")
         try:
-            transcript_list = await asyncio.to_thread(YouTubeTranscriptApi.list_transcripts, video_id)
+            # Using .list() as verified by dir() inspection
+            transcript_list = await asyncio.to_thread(YouTubeTranscriptApi().list, video_id)
             
             # Try manual English
             try:
@@ -49,7 +50,8 @@ class VideoService:
                         logger.info("Translated first available transcript to English")
             
             data = await asyncio.to_thread(transcript.fetch)
-            return " ".join([t['text'] for t in data])
+            # Support both dict and object formats for different library versions
+            return " ".join([t.get('text', '') if isinstance(t, dict) else getattr(t, 'text', '') for t in data])
         except Exception as e:
             logger.warning(f"Official API failed for {video_id}: {str(e)}")
 
@@ -88,7 +90,13 @@ class VideoService:
             'quiet': True,
             'no_warnings': True,
             'socket_timeout': 30,
-            'retries': 3,
+            'retries': 5,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'http_headers': {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Sec-Fetch-Mode': 'navigate',
+            }
         }
         
         try:
@@ -149,9 +157,8 @@ class VideoService:
                 "key_points": ["No content found."]
             }
 
-        # Chunk if needed (though 30k chars usually fits in Groq context)
-        # We'll use the first 25k chars for now to be safe
-        safe_transcript = transcript[:25000]
+        # Increased cap for better context (approx 10k tokens)
+        safe_transcript = transcript[:40000]
 
         prompt = f"""Summarize this YouTube transcript. 
         Focus on educational value. Output in English.
