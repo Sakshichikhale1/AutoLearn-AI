@@ -1,32 +1,19 @@
-import os
-import re
-import json
-import asyncio
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from dotenv import load_dotenv
-from groq import Groq 
-from youtube_transcript_api import YouTubeTranscriptApi
-import tempfile
-import yt_dlp
-import shutil
+from services.video_service import video_service
 
-load_dotenv()
+# Configure logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/video", tags=["video"])
-
-# Initialize client lazily to prevent top-level crashes
-def get_groq_client():
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        raise HTTPException(500, "GROQ_API_KEY not configured in backend")
-    return Groq(api_key=api_key)
 
 class SummarizeRequest(BaseModel):
     video_id: str | None = None
     url: str | None = None
 
 def extract_video_id(url: str) -> str | None:
+    import re
     if not url:
         return None
     patterns = [
@@ -39,128 +26,27 @@ def extract_video_id(url: str) -> str | None:
             return m.group(1)
     return None
 
-def get_transcript_fallback(video_id: str) -> str:
-    client = get_groq_client()
-    url = f"https://www.youtube.com/watch?v={video_id}"
-    
-    temp_dir = tempfile.mkdtemp()
-    audio_path = os.path.join(temp_dir, "audio.m4a")
-    
-    ydl_opts = {
-        'format': 'm4a/bestaudio/best',
-        'outtmpl': audio_path,
-        'noplaylist': True,
-        'quiet': True,
-    }
-    
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-            
-        files = os.listdir(temp_dir)
-        if not files:
-            raise Exception("No audio file was downloaded.")
-            
-        actual_audio_path = os.path.join(temp_dir, files[0])
-        
-        # Whisper max size is 25MB
-        if os.path.getsize(actual_audio_path) > 25 * 1024 * 1024:
-            raise Exception("Audio file is too large for AI transcription (>25MB). Please choose a shorter video.")
-            
-        with open(actual_audio_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                file=(files[0], audio_file.read()),
-                model="whisper-large-v3",
-                response_format="text",
-            )
-        return transcript
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-def get_transcript_sync(video_id: str) -> str:
-    """Synchronous core for transcript fetching"""
-    api = YouTubeTranscriptApi()
-    try:
-        transcript_list = api.list(video_id)
-        try:
-            # 1. Try native English
-            transcript = transcript_list.find_transcript(["en", "en-US", "en-GB"])
-        except Exception:
-            try:
-                # 2. Try to translate to English if possible
-                first_transcript = list(transcript_list)[0]
-                transcript = first_transcript.translate('en')
-            except Exception:
-                # 3. Fallback: Use the original language
-                transcript = list(transcript_list)[0]
-        
-        chunks = transcript.fetch()
-        return " ".join(chunk.text for chunk in chunks)
-    except Exception as api_err:
-        print(f"Transcript API failed ({api_err}). Falling back to AI audio transcription...")
-        return get_transcript_fallback(video_id)
-
 @router.post("/summarize")
 async def summarize_video(req: SummarizeRequest):
     vid = req.video_id or extract_video_id(req.url or "")
     if not vid:
         raise HTTPException(400, "Provide video_id or valid URL")
 
+    logger.info(f"Summarize requested for video: {vid}")
+    
     try:
-        # Run blocking transcript fetch in a thread
-        transcript_text = await asyncio.to_thread(get_transcript_sync, vid)
-        # Increased cap for better context (approx 7k tokens)
-        transcript = transcript_text[:30000] 
-    except Exception as e:
-        print(f"Transcript Error: {e}")
-        raise HTTPException(400, f"AI Summary failed: No usable transcript found. {str(e)}")
-
-    prompt = f"""Summarize this YouTube transcript. 
-IMPORTANT: The transcript might be in a foreign language (like Hindi). You MUST output the summary and key points in ENGLISH.
-
-Return STRICT JSON only:
-{{
-  "summary": "2-3 paragraph concise summary in English",
-  "key_points": ["point 1 in English", "point 2 in English", "..."]
-}}
-
-Transcript:
-\"\"\"{transcript}\"\"\""""
-
-    # Run blocking Groq call in a thread
-    def call_groq():
-        client = get_groq_client()
-        return client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {"role": "system", "content": "You output strict JSON only, no markdown."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-            response_format={"type": "json_object"},
-        )
-
-    try:
-        resp = await asyncio.to_thread(call_groq)
-        content = resp.choices[0].message.content
+        # Step 1: Extract transcript using the multi-stage service
+        transcript = await video_service.get_transcript(vid)
         
-        # Robust JSON extraction
-        try:
-            data = json.loads(content)
-        except json.JSONDecodeError:
-            # Try to find JSON block in markdown if LLM misbehaved
-            import re
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                data = json.loads(match.group(0))
-            else:
-                raise Exception("Could not parse AI response as JSON")
-
+        # Step 2: Generate summary
+        data = await video_service.summarize_transcript(transcript)
+        
         return {
             "video_id": vid,
             "summary": data.get("summary", ""),
             "key_points": data.get("key_points", []),
         }
     except Exception as e:
-        print(f"Summary Generation Error: {e}")
-        raise HTTPException(500, f"Failed to generate summary: {str(e)}")
+        logger.error(f"Video summarization failed: {str(e)}")
+        # Raise 400 with a clean message for the UI
+        raise HTTPException(status_code=400, detail=str(e))

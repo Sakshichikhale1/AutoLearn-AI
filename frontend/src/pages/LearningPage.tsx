@@ -232,11 +232,41 @@ export default function LearningPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {currentSession.data.research?.wiki && (
-                  <div className="glass-card p-6 border-l-4 border-l-primary shadow-lg">
-                    <h4 className="font-bold flex items-center gap-2 mb-3 text-foreground">
-                      <BookOpen className="h-4 w-4 text-primary" /> Wikipedia Context
-                    </h4>
-                    <p className="text-sm text-muted-foreground leading-relaxed italic">"{currentSession.data.research.wiki}"</p>
+                  <div className="glass-card p-8 space-y-6 flex flex-col justify-between group hover:border-primary/50 transition-all">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-slate-100 group-hover:bg-primary/10 transition-colors">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/6/63/Wikipedia-logo.png" className="h-5 w-5" alt="wiki" />
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-70">Encyclopedia Context</span>
+                            <h4 className="font-black text-foreground tracking-tight">
+                              {typeof currentSession.data.research.wiki === 'string' 
+                                ? "Topic Overview" 
+                                : (currentSession.data.research.wiki.title || "Topic Overview")}
+                            </h4>
+                          </div>
+                        </div>
+                        <BookOpen className="h-5 w-5 text-primary/40 group-hover:text-primary transition-colors" />
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed italic">
+                        {typeof currentSession.data.research.wiki === 'string' 
+                          ? currentSession.data.research.wiki 
+                          : (currentSession.data.research.wiki.summary || "Deepening your understanding with cross-referenced academic sources...")}
+                      </p>
+                    </div>
+                    
+                    {typeof currentSession.data.research.wiki !== 'string' && currentSession.data.research.wiki.url && (
+                      <a 
+                        href={currentSession.data.research.wiki.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary hover:gap-3 transition-all pt-4 border-t border-border/50"
+                      >
+                        Read Full Article <ArrowRight className="h-3 w-3" />
+                      </a>
+                    )}
                   </div>
                 )}
                 <div className="space-y-3">

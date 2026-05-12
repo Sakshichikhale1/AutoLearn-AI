@@ -65,6 +65,8 @@ def root():
 
 # NOW import routers (refreshed)
 from routers import exam, video, voice, share, mindmap, research
+from services.video_service import video_service
+from services.knowledge_service import knowledge_service
 
 # INCLUDE ROUTERS AFTER app is created
 app.include_router(exam.router)
@@ -165,8 +167,7 @@ async def generate_learning_content(
                 video_id = link_set[1] or link_set[2]
                 try:
                     print(f"DEBUG: Found YouTube link, extracting transcript for {video_id}")
-                    from routers.video import get_transcript_sync
-                    yt_transcript = await asyncio.to_thread(get_transcript_sync, video_id)
+                    yt_transcript = await video_service.get_transcript(video_id)
                     content += f"\n[Transcript from YouTube Video {video_id}]:\n{yt_transcript}\n"
                 except Exception as e:
                     print(f"YouTube transcript extraction failed for {video_id}: {e}")
@@ -306,14 +307,13 @@ async def generate_learning_content(
             # Fallback: if API fails, we could potentially use a fallback or just leave it empty
 
         # 3. Search for research papers & Wikipedia
-        wiki_summary = ""
-        try:
-            wiki_summary = wikipedia.summary(main_concept, sentences=3)
-        except:
-            pass
-        
-        papers = research.get_academic_papers(main_concept, limit=3)
-        research_links = [{"title": p["title"], "url": p["url"]} for p in papers]
+        knowledge = await asyncio.to_thread(knowledge_service.get_related_knowledge, main_concept)
+        wiki_data = {
+            "title": knowledge.get("title", "Related Topic"),
+            "summary": knowledge.get("summary", "No summary available."),
+            "url": knowledge.get("url", "")
+        }
+        research_links = [{"title": p["title"], "url": p["url"]} for p in research.get_academic_papers(main_concept, limit=3)]
 
         # 4. Search for images (DuckDuckGo)
         def call_ddgs():
@@ -340,7 +340,7 @@ async def generate_learning_content(
             "vocabulary": learning_data.get("vocabulary", []),
             "videos": videos,
             "research": {
-                "wiki": wiki_summary,
+                "wiki": wiki_data,
                 "links": research_links
             },
             "images": images
